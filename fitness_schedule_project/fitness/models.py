@@ -17,6 +17,7 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', "admin")
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError(_('Superuser must have is_staff=True.'))
@@ -89,8 +90,11 @@ class Schedule(models.Model):
     trainer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     gym = models.ForeignKey(Gym, on_delete=models.CASCADE)
     day_of_week = models.CharField(max_length=20, choices=DAYS_OF_WEEK, default="Monday")
-    start_time = models.TimeField()
+    start_time = models.TimeField()# a time when trainer will be available to help with gym activity
     end_time = models.TimeField()
+
+    def __str__(self) -> str:
+        return self.trainer.full_name + " - " + self.gym.name  + " - " + self.day_of_week  + " - " + self.start_time.__str__() + " - " + self.end_time.__str__()
 
     class Meta:
         verbose_name = _('Schedule')
@@ -98,23 +102,28 @@ class Schedule(models.Model):
 
 class Booking(models.Model):
     """
-    Every client person can pick a schedule with trainer, gym and also day of the week included from schedule list and 
-    then should choose a time between that trainer leaved in schedule information, but also a client can choose a case 
-    when he want a book only gym without trainer then client should pick day of the week and time of start and end of his 
-    fitness activity
+    Every client person can pick a schedule with trainer, gym and also day of the week, time when trainer available included from schedule list
+    and then should choose a time between that trainer leaved in schedule information.
     
     
-    Example: Trainer made a schedule to train people on every Monday from 08:00 AM to 12:00 AM, so client can choose that schedule
-    or can create own with other time.
+    Example: Trainer made a schedule to train people on every Monday from 08:00 AM to 12:00 AM, so client can choose that schedule.
     """
     
     client = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='client_bookings')
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, null=True, blank=True)
-    gym = models.ForeignKey(Gym, on_delete=models.CASCADE, related_name='gym_bookings', null=True, blank=True)
-    day_of_week = models.CharField(max_length=20, choices=DAYS_OF_WEEK, null=True, blank=True)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    start_time = models.TimeField(null=True, blank=True) # a time when client will start gym activity
+    end_time = models.TimeField(null=True, blank=True)
 
+    def intersects_with_schedule(self, schedule):
+        
+        if self.schedule.day_of_week != schedule.day_of_week:
+            return False
+
+        if (self.schedule.start_time < schedule.end_time) and (self.schedule.end_time > schedule.start_time):
+            return True
+        
+
+        return False
     class Meta:
         verbose_name = _('Booking')
         verbose_name_plural = _('Bookings')

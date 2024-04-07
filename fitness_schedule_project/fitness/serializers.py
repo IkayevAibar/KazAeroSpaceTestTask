@@ -10,8 +10,14 @@ class UserSerializer(serializers.ModelSerializer):
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'password', 'role')
+        fields = ('id', 'email', 'full_name', 'password', 'role')
         extra_kwargs = {'password': {'write_only': True}, 'role': {'read_only': True}}
+
+class UserTrainerRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'full_name', 'gender', 'password', 'date_of_birth')
+        extra_kwargs = {'password': {'write_only': True}}
 
 class UserAdditionalInfoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,6 +29,16 @@ class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
         fields = '__all__'
+
+class ScheduleCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        exclude = ('trainer',)
+
+class ScheduleAddingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        exclude = ('trainer',)
 
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
