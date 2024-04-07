@@ -186,8 +186,6 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
             end_time__gt=start_time
         )
         return intersecting_schedules.exists()
-    
-    
 
 class BookingViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Booking.objects.all()
