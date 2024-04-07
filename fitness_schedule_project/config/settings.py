@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     #django apps
-    'schedules',
+    'fitness',
 ]
 
 MIDDLEWARE = [
@@ -93,7 +93,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'schedules.CustomUser'
+AUTH_USER_MODEL = 'fitness.CustomUser'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
