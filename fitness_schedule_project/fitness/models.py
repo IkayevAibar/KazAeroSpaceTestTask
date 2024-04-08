@@ -82,7 +82,7 @@ DAYS_OF_WEEK = [
 
 class Schedule(models.Model):
     """
-    Each trainer person can decide in which day he will work and and how much time. 
+    Each trainer person can decide in which day of the week he will work and and how much time. 
     
     Example: Trainer can choose day Monday as full work, and other days as half work day
     """
@@ -124,6 +124,7 @@ class Booking(models.Model):
         
 
         return False
+    
     class Meta:
         verbose_name = _('Booking')
         verbose_name_plural = _('Bookings')

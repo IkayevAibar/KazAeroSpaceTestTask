@@ -35,10 +35,11 @@ class ScheduleCreateSerializer(serializers.ModelSerializer):
         model = Schedule
         exclude = ('trainer',)
 
-class ScheduleAddingSerializer(serializers.ModelSerializer):
+class ScheduleBookingSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Schedule
-        exclude = ('trainer',)
+        model = Booking
+        fields = ('start_time','end_time',)
+        extra_kwargs = {'start_time': {'required': True}, 'end_time': {'required': True}} 
 
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:

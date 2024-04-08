@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import time, datetime, timedelta
 
 from django.db import transaction
 from django.db.utils import IntegrityError
@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import CustomUser, Gym, Schedule, Booking
 from .serializers import UserSerializer, UserRegisterSerializer, UserTrainerRegisterSerializer, UserAdditionalInfoSerializer, \
-                    ScheduleSerializer, ScheduleCreateSerializer, ScheduleAddingSerializer, BookingSerializer
+                    ScheduleSerializer, ScheduleCreateSerializer, ScheduleBookingSerializer, BookingSerializer
 
 from rest_framework import viewsets, status, filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAuthenticated
@@ -100,11 +100,12 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'create_schedule':
             return ScheduleCreateSerializer
         if self.action == 'add_this_schedule':
-            return ScheduleAddingSerializer
+            return ScheduleBookingSerializer
         return ScheduleSerializer
 
     @action(detail=False, methods=['post'])
     def create_schedule(self, request):
+        """ Method for creating a schedule. Only for trainers"""
         serializer = self.get_serializer(data=request.data)
 
         if not request.user.role == "trainer":
@@ -133,6 +134,10 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['get'])
     def get_own_schedule(self, request):
+        """ Method for getting all schedules that trainer have. Only for trainers"""
+        if not request.user.role == "trainer":
+            return Response({'error': 'This method is only for trainers'}, status=status.HTTP_403_FORBIDDEN)
+
         queryset = self.get_queryset().filter(trainer=request.user)
         serializer = self.get_serializer(queryset, many=True)
 
@@ -140,6 +145,11 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=True, methods=['post'])
     def add_this_schedule(self, request, pk=None):
+        """ Method for booking a schedule. Only for clients"""
+        serializer = self.get_serializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response({'error': 'Start or End time isn\'t correct or not entered'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not request.user.role == "client":
             return Response({'error': 'Only clients can book a schedule'}, status=status.HTTP_403_FORBIDDEN)
@@ -156,10 +166,24 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
         for booking in client_bookings:
             if booking.intersects_with_schedule(schedule):
                 return Response({"error": "Selected schedule intersects with existing booking"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        start_time = serializer.validated_data['start_time']
+        end_time = serializer.validated_data['end_time']
+
+        current_date = datetime.now().date()
+
+        start_datetime = datetime.combine(current_date, start_time)
+        end_datetime = datetime.combine(current_date, end_time)
+
+        if end_datetime - start_datetime < timedelta(hours=1):
+            return Response({"error": "Selected booking gym time is not at least 1 hour"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_time < schedule.start_time or end_time > schedule.end_time:
+            return Response({"error": "Selected booking gym time is not within the schedule's time range. Please select time between " + schedule.start_time.__str__() + " and " + schedule.end_time.__str__()}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                booking = Booking.objects.create(client=client, schedule=schedule)
+                booking = Booking.objects.create(client=client, schedule=schedule, start_time=start_time, end_time=end_time)
         except IntegrityError:
             return Response({"error": "Failed to create booking"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -195,9 +219,10 @@ class BookingViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['client', 'schedule', 'start_time', 'end_time', 'schedule__day_of_week', 'schedule__start_time', 'schedule__end_time']
     
     @action(detail=False, methods=['get'])
-    def get_own_schedule(self, request):
+    def get_own_bookings(self, request):
+        """ Method for get all booked schedules that client have. Only for clients"""
         if not request.user.role == "client":
-            return Response({'error': 'Only clients have permissions to watch own booking'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Only clients have permissions to watch booking'}, status=status.HTTP_403_FORBIDDEN)
         
         queryset = self.get_queryset().filter(client=request.user)
         serializer = self.get_serializer(queryset, many=True)
